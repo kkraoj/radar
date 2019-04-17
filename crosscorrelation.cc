@@ -1,37 +1,10 @@
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 
 #include "helpers.hh"
 
 using namespace std;
-
-class DAT
-{
-    MMAP file_;
-
-public:
-    DAT( const string & filename )
-        : file_( filename )
-    {
-        if ( file_.size() % 4 ) {
-            throw runtime_error( "File size needs to be a multiple of 4 bytes." );
-        }
-
-        cerr << "Opened " << filename << " with " << file_.size() / 4 << " IQ samples.\n";
-    }
-
-    uint64_t IQ_sample_count() const { return file_.size() / 4; }
-
-    int16_t I( const uint64_t index ) const
-    {
-        return file_[ 4 * index ] | (file_[ 4 * index + 1 ] << 8);
-    }
-
-    int16_t Q( const uint64_t index ) const
-    {
-        return file_[ 4 * index + 2 ] | (file_[ 4 * index + 3 ] << 8);
-    }
-};
 
 void cross_correlate( const string & reference_filename, const string & data_filename )
 {
