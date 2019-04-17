@@ -1,31 +1,67 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <vector>
+#include <complex>
+#include <numeric>
 
 #include "helpers.hh"
 
 using namespace std;
 
-void cross_correlate( const string & reference_filename, const string & data_filename )
+vector<complex<float>> read( const DAT & dat_file )
 {
-    DAT reference { reference_filename };
-    DAT data { data_filename };
+    vector<complex<float>> ret;
+    ret.reserve( dat_file.IQ_sample_count() );
+    for ( unsigned int i = 0; i < dat_file.IQ_sample_count(); i++ ) {
+        ret.emplace_back( dat_file.I( i ), dat_file.Q( i ) );
+    }
+    return ret;
+}
 
-    if ( reference.IQ_sample_count() > data.IQ_sample_count() ) {
+void program_body( const string & reference_filename, const string & data_filename )
+{
+    vector<complex<float>> reference = read( reference_filename ), data = read( data_filename );
+
+    if ( reference.size() > data.size() ) {
         throw runtime_error( "reference length is longer than received data" );
     }
 
-    const double sample_rate = 15.36 * 1.0e6;
+    /* conjugate reference signal, and get total power of reference */
+    float reference_power = 0;
+    for ( auto & x : reference ) {
+        x = conj( x );
+        reference_power += norm( x );
+    }
 
-    for ( unsigned int i = 0; i < data.IQ_sample_count() - reference.IQ_sample_count(); i++ ) {
-        double correlation = 0;
+    const float sample_rate = 15.36 * 1.0e6;
 
-        for ( unsigned int j = 0; j < reference.IQ_sample_count(); j++ ) {
-            correlation += data.I( i + j ) * reference.I( j ) + data.Q( i + j ) * reference.Q( j );
+    unsigned int last_percent_complete = -1;
+
+    for ( unsigned int lag = 0; lag < data.size() - reference.size(); lag++ ) {
+        /* report status */
+        const unsigned int percent_complete = 10000 * lag / (data.size() - reference.size());
+
+        if ( percent_complete != last_percent_complete ) {
+            cerr << "\r" << percent_complete / 100.0 << "%                ";
+            last_percent_complete = percent_complete;
         }
 
-        cout << i / sample_rate << " " << correlation << "\n";
+        /* calculate correlation */
+        complex<float> correlation = 0;
+
+        for ( unsigned int i = 0; i < reference.size(); i++ ) {
+
+            const auto & data_sample = data[ lag + i ];
+            const auto & reference_sample = reference[ i ];
+
+            correlation += data_sample * reference_sample;
+        }
+
+        cout << lag / sample_rate << " " << abs( correlation ) / reference_power << "\n";
     }
+
+    cerr << "\n";
 }
 
 int main( const int argc, const char * argv[] )
@@ -38,7 +74,7 @@ int main( const int argc, const char * argv[] )
     }
 
     try {
-        cross_correlate( argv[ 1 ], argv[ 2 ] );
+        program_body( argv[ 1 ], argv[ 2 ] );
     } catch ( const exception & e ) {
         cerr << e.what() << "\n";
         return EXIT_FAILURE;
