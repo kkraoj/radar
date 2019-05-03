@@ -12,4 +12,5 @@ parse_SOURCES = parse.cc $(SHARED)
 crosscorrelation_SOURCES = crosscorrelation.cc $(SHARED)
 
 fftxcorr_SOURCES = fftxcorr.cc $(SHARED)
+fftxcorr_LDFLAGS = -pthread
 fftxcorr_LDADD = $(fftw3f_LIBS)
