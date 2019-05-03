@@ -36,7 +36,7 @@ void program_body( const string & reference_filename, const string & data_filena
     }
 
     /* zero-pad data out to 2x its length */
-    data.resize( data.size() * 10 );
+    data.resize( data.size() * 2 );
 
     /* pad the reference */
     reference.resize( data.size() );
@@ -58,22 +58,10 @@ void program_body( const string & reference_filename, const string & data_filena
                                                        FFTW_ESTIMATE );
 
     const fftwf_plan reverse = fftwf_plan_dft_1d( reference.size(),
-                                                  reinterpret_cast<fftwf_complex *>( reference_fft.data() ),
+                                                  reinterpret_cast<fftwf_complex *>( data_fft.data() ),
                                                   reinterpret_cast<fftwf_complex *>( crosscorrelation.data() ),
                                                   FFTW_BACKWARD,
                                                   FFTW_ESTIMATE );
-
-    for ( auto & x : reference ) {
-        x = 0;
-    }
-
-    for ( auto & x : data ) {
-        x = 0;
-    }
-
-    reference.at( 24 ) = 1.0;
-
-    data.at( 23 ) = 1.0;
 
     thread fft1 { [&ref_forward] { fftwf_execute( ref_forward ); } };
     thread fft2 { [&data_forward] { fftwf_execute( data_forward ); } };
@@ -81,27 +69,19 @@ void program_body( const string & reference_filename, const string & data_filena
     fft1.join();
     fft2.join();
 
-    /*
-    for ( unsigned int i = 0; i < reference_fft.size(); i++ ) {
-        cout << i << " " << reference_fft.at( i ).real() << " " << reference_fft.at( i ).imag() << "\n";
-    }
-
-    return;
-    */
-
     /* multiply */
     float reference_power = 0;
-    for ( unsigned int i = 0; i < reference_fft.size(); i++ ) {
+    for ( unsigned int i = 0; i < data_fft.size(); i++ ) {
         reference_power += norm( reference_fft[ i ] );
-        reference_fft[ i ] *= conj( data_fft[ i ] );
+        data_fft[ i ] *= conj( reference_fft[ i ] );
     }
 
     fftwf_execute( reverse );
 
     /* print */
     const float sample_rate = 15.36 * 1.0e6;
-    for ( unsigned int lag = 0; lag < crosscorrelation.size(); lag++ ) {
-        cout << lag / (2 * sample_rate) << " " << abs( crosscorrelation[ lag ] ) / reference_power << "\n";
+    for ( unsigned int lag = 0; lag < crosscorrelation.size() / 2; lag++ ) {
+        cout << lag / sample_rate << " " << abs( crosscorrelation[ lag ] ) / reference_power << "\n";
     }
 }
 
