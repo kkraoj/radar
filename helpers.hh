@@ -2,12 +2,16 @@
 #define HELPERS_HH
 
 #include <system_error>
+#include <vector>
+#include <complex>
 
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+
+#include <boost/align/aligned_allocator.hpp>
 
 class unix_error : public std::system_error {
     std::string what_;
@@ -73,15 +77,22 @@ public:
 
     uint8_t operator[] ( const uint64_t index ) const
     {
-        if ( index >= size_ ) { throw std::out_of_range( std::to_string( index ) ); }
         return *( static_cast<uint8_t *>( data_ ) + index );        
     }
 
+    uint8_t at( const uint64_t index ) const {
+	if ( index >= size_ ) { throw std::out_of_range( "MMAP::at(): " + std::to_string( index ) + " >= " + std::to_string( size_ ) ); }
+	return operator[]( index );
+    }
+    
     uint64_t size() const { return size_; }
 
     MMAP( const MMAP & other ) = delete;
     MMAP & operator=( const MMAP & other ) = delete;
 };
+
+using Signal = std::vector<std::complex<float>,
+			   boost::alignment::aligned_allocator<std::complex<float>, 64>>;
 
 class DAT
 {
@@ -106,6 +117,20 @@ public:
     int16_t Q( const uint64_t index ) const
     {
         return file_[ 4 * index + 2 ] | (file_[ 4 * index + 3 ] << 8);
+    }
+
+    void read( Signal & signal, const uint64_t offset ) const
+    {
+	const uint64_t breakpoint = std::min( signal.size(), IQ_sample_count() );
+	
+	for ( unsigned int index = offset; index < breakpoint; index++ ) {
+	    signal[ index ] = { float( I( index ) ), float( Q( index ) ) };
+	}
+
+	/* zero fill to end */
+	for ( unsigned int index = breakpoint; index < signal.size(); index++ ) {
+	    signal[ index ] = 0;
+	}
     }
 };
 

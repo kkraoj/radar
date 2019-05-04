@@ -1,67 +1,52 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
-#include <vector>
-#include <complex>
 #include <numeric>
 #include <type_traits>
 #include <thread>
-#include <boost/align/aligned_allocator.hpp>
-
-#include <fftw3.h> /* must be included after <complex> */
 
 #include "helpers.hh"
 
+#include <fftw3.h> /* must be included after <complex> */
+
 using namespace std;
-
-using Signal = vector<complex<float>, boost::alignment::aligned_allocator<complex<float>, 64>>;
-
-Signal read( const DAT & dat_file )
-{
-    Signal ret;
-    ret.reserve( dat_file.IQ_sample_count() );
-    for ( unsigned int i = 0; i < dat_file.IQ_sample_count(); i++ ) {
-        ret.emplace_back( dat_file.I( i ), dat_file.Q( i ) );
-    }
-
-    return ret;
-}
 
 void program_body( const string & reference_filename, const string & data_filename )
 {
-    Signal reference = read( reference_filename ), data = read( data_filename );
-
-    if ( reference.size() > data.size() ) {
+    DAT reference_dat { reference_filename }, data_dat { data_filename };
+    
+    if ( reference_dat.IQ_sample_count() > data_dat.IQ_sample_count() ) {
         throw runtime_error( "reference length is longer than received data" );
     }
 
-    /* zero-pad data out to 2x its length */
-    data.resize( data.size() * 2 );
+    /* set up signals */
+    Signal data( data_dat.IQ_sample_count() * 2 );
+    Signal reference( data.size() );
 
-    /* pad the reference */
-    reference.resize( data.size() );
-
-    Signal reference_fft( reference.size() );
+    Signal reference_fft( data.size() );
     Signal data_fft( data.size() );
-    Signal crosscorrelation( reference.size() );
+    Signal crosscorrelation( data.size() );
 
-    const fftwf_plan ref_forward = fftwf_plan_dft_1d( reference.size(),
+    const fftwf_plan ref_forward = fftwf_plan_dft_1d( data.size(),
                                                       reinterpret_cast<fftwf_complex *>( reference.data() ),
                                                       reinterpret_cast<fftwf_complex *>( reference_fft.data() ),
                                                       FFTW_FORWARD,
                                                       FFTW_ESTIMATE );
 
-    const fftwf_plan data_forward = fftwf_plan_dft_1d( reference.size(),
+    const fftwf_plan data_forward = fftwf_plan_dft_1d( data.size(),
                                                        reinterpret_cast<fftwf_complex *>( data.data() ),
                                                        reinterpret_cast<fftwf_complex *>( data_fft.data() ),
                                                        FFTW_FORWARD,
                                                        FFTW_ESTIMATE );
 
-    const fftwf_plan reverse = fftwf_plan_dft_1d( reference.size(),
+    const fftwf_plan reverse = fftwf_plan_dft_1d( data.size(),
                                                   reinterpret_cast<fftwf_complex *>( data_fft.data() ),
                                                   reinterpret_cast<fftwf_complex *>( crosscorrelation.data() ),
                                                   FFTW_BACKWARD,
                                                   FFTW_ESTIMATE );
+
+    reference_dat.read( reference, 0 );
+    data_dat.read( data, 0 );
 
     thread fft1 { [&ref_forward] { fftwf_execute( ref_forward ); } };
     thread fft2 { [&data_forward] { fftwf_execute( data_forward ); } };
