@@ -81,8 +81,8 @@ public:
     }
 
     uint8_t at( const uint64_t index ) const {
-	if ( index >= size_ ) { throw std::out_of_range( "MMAP::at(): " + std::to_string( index ) + " >= " + std::to_string( size_ ) ); }
-	return operator[]( index );
+        if ( index >= size_ ) { throw std::out_of_range( "MMAP::at(): " + std::to_string( index ) + " >= " + std::to_string( size_ ) ); }
+        return operator[]( index );
     }
     
     uint64_t size() const { return size_; }
@@ -119,18 +119,18 @@ public:
         return file_[ 4 * index + 2 ] | (file_[ 4 * index + 3 ] << 8);
     }
 
-    void read( Signal & signal, const uint64_t offset ) const
+    void read( const uint64_t offset, Signal & signal ) const
     {
-	const uint64_t breakpoint = std::min( signal.size(), IQ_sample_count() );
+        const uint64_t breakpoint = std::min( signal.size(), IQ_sample_count() );
 	
-	for ( unsigned int index = offset; index < breakpoint; index++ ) {
-	    signal[ index ] = { float( I( index ) ), float( Q( index ) ) };
-	}
+        for ( unsigned int index = offset; index < breakpoint; index++ ) {
+            signal[ index ] = { float( I( index ) ), float( Q( index ) ) };
+        }
 
-	/* zero fill to end */
-	for ( unsigned int index = breakpoint; index < signal.size(); index++ ) {
-	    signal[ index ] = 0;
-	}
+        /* zero fill to end */
+        if ( breakpoint < signal.size() ) {
+            std::fill( signal.begin() + breakpoint, signal.end(), 0 );
+        }
     }
 };
 

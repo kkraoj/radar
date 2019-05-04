@@ -1,13 +1,10 @@
 #include <cstdlib>
-#include <cstring>
 #include <iostream>
-#include <numeric>
-#include <type_traits>
 #include <thread>
 
 #include "helpers.hh"
 
-#include <fftw3.h> /* must be included after <complex> */
+#include <fftw3.h> /* must be included last, to come after <complex> */
 
 using namespace std;
 
@@ -45,8 +42,8 @@ void program_body( const string & reference_filename, const string & data_filena
                                                   FFTW_BACKWARD,
                                                   FFTW_ESTIMATE );
 
-    reference_dat.read( reference, 0 );
-    data_dat.read( data, 0 );
+    reference_dat.read( 0, reference );
+    data_dat.read( 0, data );
 
     thread fft1 { [&ref_forward] { fftwf_execute( ref_forward ); } };
     thread fft2 { [&data_forward] { fftwf_execute( data_forward ); } };
