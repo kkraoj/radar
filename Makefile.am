@@ -1,16 +1,16 @@
 AM_CPPFLAGS = $(CXX17_FLAGS) $(fftw3f_CFLAGS)
 AM_CXXFLAGS = $(PICKY_CXXFLAGS)
 
-SHARED = helpers.hh
+SHARED = helpers.hh cross-correlation.hh cross-correlation.cc
 
-bin_PROGRAMS = power parse crosscorrelation fftxcorr
+bin_PROGRAMS = power parse xcorr-slow xcorr-fast
 
 power_SOURCES = power.cc $(SHARED)
 
 parse_SOURCES = parse.cc $(SHARED)
 
-crosscorrelation_SOURCES = crosscorrelation.cc $(SHARED)
+xcorr_slow_SOURCES = xcorr-slow.cc $(SHARED)
 
-fftxcorr_SOURCES = fftxcorr.cc $(SHARED)
-fftxcorr_LDFLAGS = -pthread
-fftxcorr_LDADD = $(fftw3f_LIBS)
+xcorr_fast_SOURCES = xcorr-fast.cc $(SHARED)
+xcorr_fast_LDFLAGS = -pthread
+xcorr_fast_LDADD = $(fftw3f_LIBS)

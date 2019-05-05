@@ -6,7 +6,7 @@
 
 using namespace std;
 
-void parse_file( const string & filename )
+void program_body( const string & filename )
 {
     DAT dat { filename };
 
@@ -42,7 +42,7 @@ int main( const int argc, const char * argv[] )
     }
 
     try {
-        parse_file( argv[ 1 ] );
+        program_body( argv[ 1 ] );
     } catch ( const exception & e ) {
         cerr << e.what() << "\n";
         return EXIT_FAILURE;
