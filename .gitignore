@@ -32,3 +32,4 @@ Makefile.in
 /parse
 /xcorr-slow
 /xcorr-fast
+/xcorr-correctness-test

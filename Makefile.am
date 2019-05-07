@@ -15,3 +15,9 @@ parse_SOURCES = parse.cc $(SHARED)
 xcorr_slow_SOURCES = xcorr-slow.cc $(SHARED)
 
 xcorr_fast_SOURCES = xcorr-fast.cc $(SHARED)
+
+check_PROGRAMS = xcorr-correctness-test
+
+xcorr_correctness_test_SOURCES = xcorr-correctness-test.cc $(SHARED)
+
+TESTS = $(check_PROGRAMS)
