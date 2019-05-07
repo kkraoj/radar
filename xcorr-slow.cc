@@ -18,6 +18,10 @@ void program_body( const string & reference_filename, const string & data_filena
     Signal data( data_dat.IQ_sample_count() );
     data_dat.read( 0, data );
 
+    if ( reference.size() > data.size() ) {
+        throw runtime_error( "reference length is longer than received data" );
+    }
+
     /* make output */
     Signal crosscorrelation( data.size() - reference.size() );
 
