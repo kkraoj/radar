@@ -6,10 +6,14 @@
 
 using namespace std;
 
-void cross_correlate_slow( const Signal & reference, const Signal & data, Signal & output )
+void correlate_slow( const Signal & reference, const Signal & data, vector<float> & output )
 {
     if ( reference.size() > data.size() ) {
         throw runtime_error( "reference length is longer than received data" );
+    }
+
+    if ( output.size() != data.size() - reference.size() ) {
+        throw runtime_error( "invalid output length (must be data_length - reference_length)" );
     }
 
     /* get power of reference signal */
@@ -29,7 +33,7 @@ void cross_correlate_slow( const Signal & reference, const Signal & data, Signal
             correlation += data_sample * conj( reference_sample );
         }
 
-        output[ lag ] = correlation / reference_power;
+        output[ lag ] = abs( correlation ) / reference_power;
     }
 }
 
@@ -86,8 +90,8 @@ CrossCorrelator::CrossCorrelator( const size_t reference_length,
     }
 }
 
-void CrossCorrelator::correlate( const Signal & reference, const Signal & data,
-                                 vector<float> & output )
+void CrossCorrelator::correlate_fast( const Signal & reference, const Signal & data,
+                                      vector<float> & output )
 {
     if ( reference.size() != reference_length_ ) {
         throw runtime_error( "invalid reference length" );

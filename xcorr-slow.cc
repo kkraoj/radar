@@ -23,15 +23,15 @@ void program_body( const string & reference_filename, const string & data_filena
     }
 
     /* make output */
-    Signal crosscorrelation( data.size() - reference.size() );
+    vector<float> result( data.size() - reference.size() );
 
     /* do the cross-correlation with a slow O(N^2) algorithm */
-    cross_correlate_slow( reference, data, crosscorrelation );
+    correlate_slow( reference, data, result );
 
     /* print */
     const float sample_rate = 15.36 * 1.0e6;
-    for ( unsigned int lag = 0; lag < crosscorrelation.size(); lag++ ) {
-        cout << lag / sample_rate << " " << abs( crosscorrelation[ lag ] ) << "\n";
+    for ( unsigned int lag = 0; lag < result.size(); lag++ ) {
+        cout << lag / sample_rate << " " << result[ lag ] << "\n";
     }
 }
 

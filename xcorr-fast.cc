@@ -26,7 +26,7 @@ void program_body( const string & reference_filename, const string & data_filena
     vector<float> result( data.size() - reference.size() );
 
     CrossCorrelator cross_correlator( reference.size(), data.size() );
-    cross_correlator.correlate( reference, data, result );
+    cross_correlator.correlate_fast( reference, data, result );
 
     /* print */
 
