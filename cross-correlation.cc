@@ -125,6 +125,11 @@ void CrossCorrelator::correlate_fast( const Signal & reference, const Signal & d
     memcpy( reference_.data(), reference.data(), reference_length_ * sizeof( complex<float> ) );
     reference_plan_.execute();
 
+    float reference_power = 0;
+    for ( unsigned int i = 0; i < reference_fft_.size(); i++ ) {
+        reference_power += norm( reference_fft_[ i ] );
+    }
+
     for ( unsigned int offset = 0; offset < data.size(); offset += interval ) {
         cerr << "\r" << int( 100.0 * offset / float( data.size() ) ) << "%             ";
 
@@ -134,9 +139,7 @@ void CrossCorrelator::correlate_fast( const Signal & reference, const Signal & d
         data_plan_.execute();
 
         /* multiply data_fft_ in place by conjugate of reference */
-        float reference_power = 0;
         for ( unsigned int i = 0; i < data_fft_.size(); i++ ) {
-            reference_power += norm( reference_fft_[ i ] );
             data_fft_[ i ] *= conj( reference_fft_[ i ] );
         }
 
