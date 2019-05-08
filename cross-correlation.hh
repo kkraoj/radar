@@ -24,6 +24,8 @@ class CrossCorrelator
 {
     size_t reference_length_, data_length_;
 
+    size_t chunk_size_;
+
     Signal reference_, reference_fft_;
     Signal data_, data_fft_;
 

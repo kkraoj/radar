@@ -65,26 +65,18 @@ void FFTPlan::execute()
     fftwf_execute( plan_ );
 }
 
-unsigned int p2( const unsigned int x )
-{
-    unsigned int ret = 1;
-    while ( ret < x ) {
-        ret *= 2;
-    }
-    return ret;
-}
-
 CrossCorrelator::CrossCorrelator( const size_t reference_length,
                                   const size_t data_length )
     : reference_length_( reference_length ),
       data_length_( data_length ),
-      reference_( reference_length * 2 ),
-      reference_fft_( reference_length * 2 ),
-      data_( reference_length * 2 ),
-      data_fft_( reference_length * 2 ),
-      reference_plan_( reference_, reference_fft_, FFTW_FORWARD, FFTW_MEASURE ),
-      data_plan_( data_, data_fft_, FFTW_FORWARD, FFTW_MEASURE ),
-      inverse_plan_( data_fft_, data_, FFTW_BACKWARD, FFTW_MEASURE )
+      chunk_size_( min( data_length, size_t( 7680000 ) ) ),
+      reference_( chunk_size_ ),
+      reference_fft_( chunk_size_ ),
+      data_( chunk_size_ ),
+      data_fft_( chunk_size_ ),
+      reference_plan_( reference_, reference_fft_, FFTW_FORWARD, FFTW_ESTIMATE ),
+      data_plan_( data_, data_fft_, FFTW_FORWARD, FFTW_ESTIMATE ),
+      inverse_plan_( data_fft_, data_, FFTW_BACKWARD, FFTW_ESTIMATE )
 {
     if ( reference_length < 1 ) {
         throw runtime_error( "invalid reference_length" );
@@ -114,7 +106,9 @@ void CrossCorrelator::correlate_fast( const Signal & reference, const Signal & d
         throw runtime_error( "invalid output length (must be data_length - reference_length)" );
     }
 
-    for ( unsigned int offset = 0; offset < data.size(); offset += reference_length_ ) {
+    const unsigned int interval = reference_.size() - reference_length_;
+
+    for ( unsigned int offset = 0; offset < data.size(); offset += interval ) {
         cerr << "offset=" << offset << "\n";
         thread t1( [&] {
                 fill( reference_.begin(), reference_.end(), 0 );
@@ -143,7 +137,7 @@ void CrossCorrelator::correlate_fast( const Signal & reference, const Signal & d
         /* inverse FFT */
         inverse_plan_.execute();
 
-        for ( unsigned int lag = 0; lag < reference_length_ and lag + offset < output.size(); lag++ ) {
+        for ( unsigned int lag = 0; lag < interval and lag + offset < output.size(); lag++ ) {
             output[ offset + lag ] = abs( data_[ lag ] ) / reference_power;
         }
     }

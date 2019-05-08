@@ -7,6 +7,14 @@
 
 using namespace std;
 
+void output_line( const float x, const float y )
+{
+    const float line[ 2 ] = { x, y };
+    if ( 2 != fwrite( line, sizeof( float ), 2, stdout ) ) {
+        throw unix_error( "fwrite" );
+    }
+}
+
 void program_body( const string & reference_filename, const string & data_filename )
 {
     /* read in DAT files */
@@ -29,12 +37,23 @@ void program_body( const string & reference_filename, const string & data_filena
     cross_correlator.correlate_fast( reference, data, result );
 
     /* print */
-    /*
     const float sample_rate = 15.36 * 1.0e6;
+    bool printing = false;
     for ( unsigned int lag = 0; lag < result.size(); lag++ ) {
-        cout << lag / sample_rate << " " << result[ lag ] << "\n";
+        if ( result[ lag ] > 0.001 ) {
+            if ( not printing and lag > 0 ) {
+                output_line( (lag-1) / sample_rate, 0 );
+                printing = true;
+            }
+
+            output_line( lag / sample_rate, result[ lag ] );
+        } else {
+            if ( printing ) {
+                output_line( lag / sample_rate, 0 );
+                printing = false;
+            }
+        }
     }
-    */
 }
 
 int main( const int argc, const char * argv[] )
