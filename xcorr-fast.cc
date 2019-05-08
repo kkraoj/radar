@@ -29,11 +29,12 @@ void program_body( const string & reference_filename, const string & data_filena
     cross_correlator.correlate_fast( reference, data, result );
 
     /* print */
-
+    /*
     const float sample_rate = 15.36 * 1.0e6;
     for ( unsigned int lag = 0; lag < result.size(); lag++ ) {
         cout << lag / sample_rate << " " << result[ lag ] << "\n";
     }
+    */
 }
 
 int main( const int argc, const char * argv[] )

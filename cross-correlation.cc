@@ -65,17 +65,26 @@ void FFTPlan::execute()
     fftwf_execute( plan_ );
 }
 
+unsigned int p2( const unsigned int x )
+{
+    unsigned int ret = 1;
+    while ( ret < x ) {
+        ret *= 2;
+    }
+    return ret;
+}
+
 CrossCorrelator::CrossCorrelator( const size_t reference_length,
                                   const size_t data_length )
     : reference_length_( reference_length ),
       data_length_( data_length ),
-      reference_( data_length ),
-      reference_fft_( data_length ),
-      data_( data_length ),
-      data_fft_( data_length ),
-      reference_plan_( reference_, reference_fft_, FFTW_FORWARD, FFTW_ESTIMATE ),
-      data_plan_( data_, data_fft_, FFTW_FORWARD, FFTW_ESTIMATE ),
-      inverse_plan_( data_fft_, data_, FFTW_BACKWARD, FFTW_ESTIMATE )
+      reference_( reference_length * 2 ),
+      reference_fft_( reference_length * 2 ),
+      data_( reference_length * 2 ),
+      data_fft_( reference_length * 2 ),
+      reference_plan_( reference_, reference_fft_, FFTW_FORWARD, FFTW_MEASURE ),
+      data_plan_( data_, data_fft_, FFTW_FORWARD, FFTW_MEASURE ),
+      inverse_plan_( data_fft_, data_, FFTW_BACKWARD, FFTW_MEASURE )
 {
     if ( reference_length < 1 ) {
         throw runtime_error( "invalid reference_length" );
@@ -105,33 +114,37 @@ void CrossCorrelator::correlate_fast( const Signal & reference, const Signal & d
         throw runtime_error( "invalid output length (must be data_length - reference_length)" );
     }
 
-    thread t1( [&] {
-            fill( reference_.begin(), reference_.end(), 0 );
-            memcpy( reference_.data(), reference.data(), reference_length_ * sizeof( complex<float> ) );
-            reference_plan_.execute();
-        } );
+    for ( unsigned int offset = 0; offset < data.size(); offset += reference_length_ ) {
+        cerr << "offset=" << offset << "\n";
+        thread t1( [&] {
+                fill( reference_.begin(), reference_.end(), 0 );
+                memcpy( reference_.data(), reference.data(), reference_length_ * sizeof( complex<float> ) );
+                reference_plan_.execute();
+            } );
 
-    thread t2( [&] {
-            fill( data_.begin(), data_.end(), 0 );
-            memcpy( data_.data(), data.data(), data_length_ * sizeof( complex<float> ) );
-            data_plan_.execute();
-            fill( data_.begin(), data_.end(), 0 );
-        } );
+        thread t2( [&] {
+                fill( data_.begin(), data_.end(), 0 );
+                memcpy( data_.data(), data.data() + offset, min( data_.size(),
+                                                                 data.size() - offset ) * sizeof( complex<float> ) );
+                data_plan_.execute();
+                fill( data_.begin(), data_.end(), 0 );
+            } );
 
-    t1.join();
-    t2.join();
+        t1.join();
+        t2.join();
 
-    /* multiply data_fft_ in place by conjugate of reference */
-    float reference_power = 0;
-    for ( unsigned int i = 0; i < data_fft_.size(); i++ ) {
-        reference_power += norm( reference_fft_[ i ] );
-        data_fft_[ i ] *= conj( reference_fft_[ i ] );
-    }
+        /* multiply data_fft_ in place by conjugate of reference */
+        float reference_power = 0;
+        for ( unsigned int i = 0; i < data_fft_.size(); i++ ) {
+            reference_power += norm( reference_fft_[ i ] );
+            data_fft_[ i ] *= conj( reference_fft_[ i ] );
+        }
 
-    /* inverse FFT */
-    inverse_plan_.execute();
+        /* inverse FFT */
+        inverse_plan_.execute();
 
-    for ( unsigned int lag = 0; lag < output.size(); lag++ ) {
-        output[ lag ] = abs( data_[ lag ] ) / reference_power;
+        for ( unsigned int lag = 0; lag < reference_length_ and lag + offset < output.size(); lag++ ) {
+            output[ offset + lag ] = abs( data_[ lag ] ) / reference_power;
+        }
     }
 }
