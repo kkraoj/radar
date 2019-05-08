@@ -10,7 +10,7 @@ class FFTPlan
 
 public:
     FFTPlan( Signal & input, Signal & output,
-             const int sign, const int flags, const int nthreads );
+             const int sign, const int flags );
     ~FFTPlan();
     void execute();
 

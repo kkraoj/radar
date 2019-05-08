@@ -46,6 +46,10 @@ public:
         if ( not fftwf_init_threads() ) {
             throw unix_error( "fftwf_init_threads" );
         }
+
+        if ( thread::hardware_concurrency() > 1 ) {
+            fftwf_plan_with_nthreads( thread::hardware_concurrency() / 2 );
+        }
     }
 
     ~FFTW() { fftwf_cleanup_threads(); }
@@ -57,13 +61,12 @@ template <typename T>
 T * notnull( const string & what, T * x ) { if ( x ) { return x; } throw runtime_error( what ); }
 
 FFTPlan::FFTPlan( Signal & input, Signal & output,
-                  const int sign, const int flags, const int nthreads )
+                  const int sign, const int flags )
     : plan_( notnull( "fftwf_plan_dft_1d",
-                      [&] { fftwf_plan_with_nthreads( nthreads );
-                          return fftwf_plan_dft_1d( input.size(),
-                                                    reinterpret_cast<fftwf_complex *>( input.data() ),
-                                                    reinterpret_cast<fftwf_complex *>( output.data() ),
-                                                    sign, flags ); }() ) )
+                      fftwf_plan_dft_1d( input.size(),
+                                         reinterpret_cast<fftwf_complex *>( input.data() ),
+                                         reinterpret_cast<fftwf_complex *>( output.data() ),
+                                         sign, flags ) ) )
 {}
 
 FFTPlan::~FFTPlan()
@@ -85,9 +88,9 @@ CrossCorrelator::CrossCorrelator( const size_t reference_length,
       reference_fft_( reference_.size() ),
       data_( reference_.size() ),
       data_fft_( reference_.size() ),
-      reference_plan_( reference_, reference_fft_, FFTW_FORWARD, FFTW_ESTIMATE, 1 ),
-      data_plan_( data_, data_fft_, FFTW_FORWARD, FFTW_ESTIMATE, 1 ),
-      inverse_plan_( data_fft_, data_, FFTW_BACKWARD, FFTW_ESTIMATE, 2 )
+      reference_plan_( reference_, reference_fft_, FFTW_FORWARD, FFTW_ESTIMATE ),
+      data_plan_( data_, data_fft_, FFTW_FORWARD, FFTW_ESTIMATE ),
+      inverse_plan_( data_fft_, data_, FFTW_BACKWARD, FFTW_ESTIMATE )
 {
     if ( reference_length < 1 ) {
         throw runtime_error( "invalid reference_length" );
@@ -119,25 +122,16 @@ void CrossCorrelator::correlate_fast( const Signal & reference, const Signal & d
 
     const unsigned int interval = reference_.size() - reference_length_;
 
+    memcpy( reference_.data(), reference.data(), reference_length_ * sizeof( complex<float> ) );
+    reference_plan_.execute();
+
     for ( unsigned int offset = 0; offset < data.size(); offset += interval ) {
         cerr << "\r" << int( 100.0 * offset / float( data.size() ) ) << "%             ";
 
-        thread t1( [&] {
-                fill( reference_.begin(), reference_.end(), 0 );
-                memcpy( reference_.data(), reference.data(), reference_length_ * sizeof( complex<float> ) );
-                reference_plan_.execute();
-            } );
-
-        thread t2( [&] {
-                fill( data_.begin(), data_.end(), 0 );
-                memcpy( data_.data(), data.data() + offset, min( data_.size(),
-                                                                 data.size() - offset ) * sizeof( complex<float> ) );
-                data_plan_.execute();
-                fill( data_.begin(), data_.end(), 0 );
-            } );
-
-        t1.join();
-        t2.join();
+        fill( data_.begin(), data_.end(), 0 );
+        memcpy( data_.data(), data.data() + offset, min( data_.size(),
+                                                         data.size() - offset ) * sizeof( complex<float> ) );
+        data_plan_.execute();
 
         /* multiply data_fft_ in place by conjugate of reference */
         float reference_power = 0;
