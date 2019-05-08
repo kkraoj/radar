@@ -59,8 +59,7 @@ T * notnull( const string & what, T * x ) { if ( x ) { return x; } throw runtime
 FFTPlan::FFTPlan( Signal & input, Signal & output,
                   const int sign, const int flags, const int nthreads )
     : plan_( notnull( "fftwf_plan_dft_1d",
-                      [&] {
-                          fftwf_plan_with_nthreads( nthreads );
+                      [&] { fftwf_plan_with_nthreads( nthreads );
                           return fftwf_plan_dft_1d( input.size(),
                                                     reinterpret_cast<fftwf_complex *>( input.data() ),
                                                     reinterpret_cast<fftwf_complex *>( output.data() ),
