@@ -163,26 +163,24 @@ void CrossCorrelator::correlate_fast( const Signal & reference, const Signal & d
         reference_power += norm( reference_fft_[ i ] );
     }
 
-    for ( unsigned int offset = 0; offset < data.size(); offset += interval ) {
-        cerr << "\r" << int( 100.0 * offset / float( data.size() ) ) << "%             ";
+    for ( unsigned int thread_id = 0; thread_id < data_.size(); thread_id++ ) {
+        for ( unsigned int offset = thread_id * interval; offset < data.size(); offset += data_.size() * interval ) {
+            fill( data_[ thread_id ].begin(), data_[ thread_id ].end(), 0 );
+            memcpy( data_[ thread_id ].data(), data.data() + offset, min( reference_.size(),
+                                                                          data.size() - offset ) * sizeof( complex<float> ) );
+            data_plan_.execute( data_[ thread_id ], data_fft_[ thread_id ] );
 
-        fill( data_.at( 0 ).begin(), data_.at( 0 ).end(), 0 );
-        memcpy( data_.at( 0 ).data(), data.data() + offset, min( reference_.size(),
-                                                                 data.size() - offset ) * sizeof( complex<float> ) );
-        data_plan_.execute( data_.at( 0 ), data_fft_.at( 0 ) );
+            /* multiply data_fft_ in place by conjugate of reference */
+            for ( unsigned int i = 0; i < data_fft_[ thread_id ].size(); i++ ) {
+                data_fft_[ thread_id ][ i ] *= conj( reference_fft_[ i ] );
+            }
 
-        /* multiply data_fft_ in place by conjugate of reference */
-        for ( unsigned int i = 0; i < data_fft_.at( 0 ).size(); i++ ) {
-            data_fft_.at( 0 )[ i ] *= conj( reference_fft_[ i ] );
-        }
+            /* inverse FFT */
+            inverse_plan_.execute( data_fft_[ thread_id ], data_[ thread_id ] );
 
-        /* inverse FFT */
-        inverse_plan_.execute( data_fft_.at( 0 ), data_.at( 0 ) );
-
-        for ( unsigned int lag = 0; lag < interval and lag + offset < output.size(); lag++ ) {
-            output[ offset + lag ] = abs( data_.at( 0 )[ lag ] ) / reference_power;
+            for ( unsigned int lag = 0; lag < interval and lag + offset < output.size(); lag++ ) {
+                output[ offset + lag ] = abs( data_[ thread_id ][ lag ] ) / reference_power;
+            }
         }
     }
-
-    cerr << "\r                                    \n";
 }
