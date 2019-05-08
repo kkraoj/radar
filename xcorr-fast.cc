@@ -33,7 +33,7 @@ void program_body( const string & reference_filename, const string & data_filena
     /* make output */
     vector<float> result( data.size() - reference.size() );
 
-    CrossCorrelator cross_correlator( reference.size(), data.size() );
+    CrossCorrelator cross_correlator( reference.size(), data.size(), 7680000 );
     cross_correlator.correlate_fast( reference, data, result );
 
     /* print */

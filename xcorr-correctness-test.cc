@@ -47,7 +47,7 @@ void program_body()
 
         correlate_slow( reference, data, result_slow );
 
-        CrossCorrelator cross_correlator( reference.size(), data.size() );
+        CrossCorrelator cross_correlator( reference.size(), data.size(), data.size() / 8 );
         cross_correlator.correlate_fast( reference, data, result_fast );
 
         for ( unsigned int lag = 0; lag < result_slow.size(); lag++ ) {

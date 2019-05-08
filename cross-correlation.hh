@@ -24,8 +24,6 @@ class CrossCorrelator
 {
     size_t reference_length_, data_length_;
 
-    size_t chunk_size_;
-
     Signal reference_, reference_fft_;
     Signal data_, data_fft_;
 
@@ -33,7 +31,8 @@ class CrossCorrelator
 
 public:
     CrossCorrelator( const size_t reference_length,
-                     const size_t data_length );
+                     const size_t data_length,
+                     const size_t max_chunk_size );
 
     void correlate_fast( const Signal & reference, const Signal & data, std::vector<float> & output );
 };

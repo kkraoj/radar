@@ -66,14 +66,14 @@ void FFTPlan::execute()
 }
 
 CrossCorrelator::CrossCorrelator( const size_t reference_length,
-                                  const size_t data_length )
+                                  const size_t data_length,
+                                  const size_t max_chunk_size )
     : reference_length_( reference_length ),
       data_length_( data_length ),
-      chunk_size_( min( data_length, size_t( 7680000 ) ) ),
-      reference_( chunk_size_ ),
-      reference_fft_( chunk_size_ ),
-      data_( chunk_size_ ),
-      data_fft_( chunk_size_ ),
+      reference_( max( reference_length * 2, min( data_length, size_t( max_chunk_size ) ) ) ),
+      reference_fft_( reference_.size() ),
+      data_( reference_.size() ),
+      data_fft_( reference_.size() ),
       reference_plan_( reference_, reference_fft_, FFTW_FORWARD, FFTW_ESTIMATE ),
       data_plan_( data_, data_fft_, FFTW_FORWARD, FFTW_ESTIMATE ),
       inverse_plan_( data_fft_, data_, FFTW_BACKWARD, FFTW_ESTIMATE )
