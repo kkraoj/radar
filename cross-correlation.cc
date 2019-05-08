@@ -103,6 +103,12 @@ CrossCorrelator::CrossCorrelator( const size_t reference_length,
     if ( reference_length > data_length ) {
         throw runtime_error( "reference_length cannot be longer than data_length" );
     }
+
+    if ( reference_.size() < data_.size() ) {
+        if ( (reference_.size() - reference_length_) % 64 ) {
+            throw runtime_error( "max_chunk_size leads to unaligned access" );
+        }
+    }
 }
 
 void CrossCorrelator::correlate_fast( const Signal & reference, const Signal & data,
