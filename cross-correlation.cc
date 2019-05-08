@@ -62,21 +62,48 @@ T * notnull( const string & what, T * x ) { if ( x ) { return x; } throw runtime
 
 FFTPlan::FFTPlan( Signal & input, Signal & output,
                   const int sign, const int flags )
-    : plan_( notnull( "fftwf_plan_dft_1d",
-                      fftwf_plan_dft_1d( input.size(),
+    : size_( input.size() ),
+      plan_( notnull( "fftwf_plan_dft_1d",
+                      fftwf_plan_dft_1d( size_,
                                          reinterpret_cast<fftwf_complex *>( input.data() ),
                                          reinterpret_cast<fftwf_complex *>( output.data() ),
                                          sign, flags ) ) )
-{}
+{
+    if ( output.size() != size_ ) {
+        throw runtime_error( "output size cannot be less than input size" );
+    }
+
+    if ( fftwf_alignment_of( reinterpret_cast<float *>( input.data() ) ) ) {
+        throw runtime_error( "input not sufficiently aligned" );
+    }
+
+    if ( fftwf_alignment_of( reinterpret_cast<float *>( output.data() ) ) ) {
+        throw runtime_error( "output not sufficiently aligned" );
+    }
+}
 
 FFTPlan::~FFTPlan()
 {
     fftwf_destroy_plan( plan_ );
 }
 
-void FFTPlan::execute()
+void FFTPlan::execute( Signal & input, Signal & output )
 {
-    fftwf_execute( plan_ );
+    if ( input.size() != size_ or output.size() != size_ ) {
+        throw runtime_error( "size mismatch" );
+    }
+
+    if ( fftwf_alignment_of( reinterpret_cast<float *>( input.data() ) ) ) {
+        throw runtime_error( "input not sufficiently aligned" );
+    }
+
+    if ( fftwf_alignment_of( reinterpret_cast<float *>( output.data() ) ) ) {
+        throw runtime_error( "output not sufficiently aligned" );
+    }
+
+    fftwf_execute_dft( plan_,
+                       reinterpret_cast<fftwf_complex *>( input.data() ),
+                       reinterpret_cast<fftwf_complex *>( output.data() ) );
 }
 
 CrossCorrelator::CrossCorrelator( const size_t reference_length,
@@ -129,7 +156,7 @@ void CrossCorrelator::correlate_fast( const Signal & reference, const Signal & d
     const unsigned int interval = reference_.size() - reference_length_;
 
     memcpy( reference_.data(), reference.data(), reference_length_ * sizeof( complex<float> ) );
-    reference_plan_.execute();
+    reference_plan_.execute( reference_, reference_fft_ );
 
     float reference_power = 0;
     for ( unsigned int i = 0; i < reference_fft_.size(); i++ ) {
@@ -142,7 +169,7 @@ void CrossCorrelator::correlate_fast( const Signal & reference, const Signal & d
         fill( data_.begin(), data_.end(), 0 );
         memcpy( data_.data(), data.data() + offset, min( data_.size(),
                                                          data.size() - offset ) * sizeof( complex<float> ) );
-        data_plan_.execute();
+        data_plan_.execute( data_, data_fft_ );
 
         /* multiply data_fft_ in place by conjugate of reference */
         for ( unsigned int i = 0; i < data_fft_.size(); i++ ) {
@@ -150,7 +177,7 @@ void CrossCorrelator::correlate_fast( const Signal & reference, const Signal & d
         }
 
         /* inverse FFT */
-        inverse_plan_.execute();
+        inverse_plan_.execute( data_fft_, data_ );
 
         for ( unsigned int lag = 0; lag < interval and lag + offset < output.size(); lag++ ) {
             output[ offset + lag ] = abs( data_[ lag ] ) / reference_power;

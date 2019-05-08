@@ -6,13 +6,14 @@ void correlate_slow( const Signal & reference, const Signal & data, std::vector<
 
 class FFTPlan
 {
+    size_t size_;
     fftwf_plan plan_;
 
 public:
     FFTPlan( Signal & input, Signal & output,
              const int sign, const int flags );
     ~FFTPlan();
-    void execute();
+    void execute( Signal & input, Signal & output );
 
     FFTPlan( const FFTPlan & other ) = delete;
     FFTPlan & operator=( const FFTPlan & other ) = delete;
