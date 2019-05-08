@@ -113,11 +113,11 @@ CrossCorrelator::CrossCorrelator( const size_t reference_length,
       data_length_( data_length ),
       reference_( max( reference_length * 2, min( data_length, size_t( max_chunk_size ) ) ) ),
       reference_fft_( reference_.size() ),
-      data_( reference_.size() ),
-      data_fft_( reference_.size() ),
+      data_( thread::hardware_concurrency(), Signal( reference_.size() ) ),
+      data_fft_( thread::hardware_concurrency(), Signal( reference_.size() ) ),
       reference_plan_( reference_, reference_fft_, FFTW_FORWARD, FFTW_ESTIMATE ),
-      data_plan_( data_, data_fft_, FFTW_FORWARD, FFTW_ESTIMATE ),
-      inverse_plan_( data_fft_, data_, FFTW_BACKWARD, FFTW_ESTIMATE )
+      data_plan_( data_.at( 0 ), data_fft_.at( 0 ), FFTW_FORWARD, FFTW_ESTIMATE ),
+      inverse_plan_( data_fft_.at( 0 ), data_.at( 0 ), FFTW_BACKWARD, FFTW_ESTIMATE )
 {
     if ( reference_length < 1 ) {
         throw runtime_error( "invalid reference_length" );
@@ -166,21 +166,21 @@ void CrossCorrelator::correlate_fast( const Signal & reference, const Signal & d
     for ( unsigned int offset = 0; offset < data.size(); offset += interval ) {
         cerr << "\r" << int( 100.0 * offset / float( data.size() ) ) << "%             ";
 
-        fill( data_.begin(), data_.end(), 0 );
-        memcpy( data_.data(), data.data() + offset, min( data_.size(),
-                                                         data.size() - offset ) * sizeof( complex<float> ) );
-        data_plan_.execute( data_, data_fft_ );
+        fill( data_.at( 0 ).begin(), data_.at( 0 ).end(), 0 );
+        memcpy( data_.at( 0 ).data(), data.data() + offset, min( reference_.size(),
+                                                                 data.size() - offset ) * sizeof( complex<float> ) );
+        data_plan_.execute( data_.at( 0 ), data_fft_.at( 0 ) );
 
         /* multiply data_fft_ in place by conjugate of reference */
-        for ( unsigned int i = 0; i < data_fft_.size(); i++ ) {
-            data_fft_[ i ] *= conj( reference_fft_[ i ] );
+        for ( unsigned int i = 0; i < data_fft_.at( 0 ).size(); i++ ) {
+            data_fft_.at( 0 )[ i ] *= conj( reference_fft_[ i ] );
         }
 
         /* inverse FFT */
-        inverse_plan_.execute( data_fft_, data_ );
+        inverse_plan_.execute( data_fft_.at( 0 ), data_.at( 0 ) );
 
         for ( unsigned int lag = 0; lag < interval and lag + offset < output.size(); lag++ ) {
-            output[ offset + lag ] = abs( data_[ lag ] ) / reference_power;
+            output[ offset + lag ] = abs( data_.at( 0 )[ lag ] ) / reference_power;
         }
     }
 

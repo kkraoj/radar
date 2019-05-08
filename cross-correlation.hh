@@ -24,7 +24,7 @@ class CrossCorrelator
     size_t reference_length_, data_length_;
 
     Signal reference_, reference_fft_;
-    Signal data_, data_fft_;
+    std::vector<Signal> data_, data_fft_;
 
     FFTPlan reference_plan_, data_plan_, inverse_plan_;
 
