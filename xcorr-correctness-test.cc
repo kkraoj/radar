@@ -13,7 +13,7 @@ const unsigned int MAX_DATA_MINUS_REFERENCE = 20000;
 
 void program_body()
 {
-    uniform_int_distribution<> reference_size { 1, MAX_REFERENCE };
+    uniform_int_distribution<> reference_size { 32, MAX_REFERENCE };
     uniform_int_distribution<> data_minus_reference_size { 1, MAX_DATA_MINUS_REFERENCE };
     uniform_real_distribution<> sample { -32768.0, 32768.0 };
 
@@ -29,6 +29,16 @@ void program_body()
 
         for ( auto & x : data ) {
             x = sample( rng );
+        }
+
+        if ( iteration % 2 ) {
+            /* add the reference in there somewhere */
+            const unsigned int offset = reference_size( rng ) + data_minus_reference_size( rng );
+            for ( unsigned int index = 0;
+                  index < reference.size() and offset + index < data.size();
+                  index++ ) {
+                data.at( offset + index ) += reference.at( index );
+            }
         }
 
         /* make output */
