@@ -38,21 +38,33 @@ void correlate_slow( const Signal & reference, const Signal & data, vector<float
 }
 
 /* make sure that global FFTW state is cleaned up when program exits */
-class FFTW { public: ~FFTW() { fftwf_cleanup(); } };
+class FFTW
+{
+public:
+    FFTW()
+    {
+        if ( not fftwf_init_threads() ) {
+            throw unix_error( "fftwf_init_threads" );
+        }
+    }
+
+    ~FFTW() { fftwf_cleanup_threads(); }
+};
+
 FFTW global_fftw_state;
 
 template <typename T>
 T * notnull( const string & what, T * x ) { if ( x ) { return x; } throw runtime_error( what ); }
 
 FFTPlan::FFTPlan( Signal & input, Signal & output,
-                  const int sign, const int flags )
-    : input_( &input ),
-      output_( &output ),
-      plan_( notnull( "fftwf_plan_dft_1d",
-                      fftwf_plan_dft_1d( input_->size(),
-                                         reinterpret_cast<fftwf_complex *>( input_->data() ),
-                                         reinterpret_cast<fftwf_complex *>( output_->data() ),
-                                         sign, flags ) ) )
+                  const int sign, const int flags, const int nthreads )
+    : plan_( notnull( "fftwf_plan_dft_1d",
+                      [&] {
+                          fftwf_plan_with_nthreads( nthreads );
+                          return fftwf_plan_dft_1d( input.size(),
+                                                    reinterpret_cast<fftwf_complex *>( input.data() ),
+                                                    reinterpret_cast<fftwf_complex *>( output.data() ),
+                                                    sign, flags ); }() ) )
 {}
 
 FFTPlan::~FFTPlan()
@@ -74,9 +86,9 @@ CrossCorrelator::CrossCorrelator( const size_t reference_length,
       reference_fft_( reference_.size() ),
       data_( reference_.size() ),
       data_fft_( reference_.size() ),
-      reference_plan_( reference_, reference_fft_, FFTW_FORWARD, FFTW_ESTIMATE ),
-      data_plan_( data_, data_fft_, FFTW_FORWARD, FFTW_ESTIMATE ),
-      inverse_plan_( data_fft_, data_, FFTW_BACKWARD, FFTW_ESTIMATE )
+      reference_plan_( reference_, reference_fft_, FFTW_FORWARD, FFTW_ESTIMATE, 1 ),
+      data_plan_( data_, data_fft_, FFTW_FORWARD, FFTW_ESTIMATE, 1 ),
+      inverse_plan_( data_fft_, data_, FFTW_BACKWARD, FFTW_ESTIMATE, 2 )
 {
     if ( reference_length < 1 ) {
         throw runtime_error( "invalid reference_length" );
