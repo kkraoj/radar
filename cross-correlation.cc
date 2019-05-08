@@ -109,7 +109,8 @@ void CrossCorrelator::correlate_fast( const Signal & reference, const Signal & d
     const unsigned int interval = reference_.size() - reference_length_;
 
     for ( unsigned int offset = 0; offset < data.size(); offset += interval ) {
-        cerr << "offset=" << offset << "\n";
+        cerr << "\r" << int( 100.0 * offset / float( data.size() ) ) << "%             ";
+
         thread t1( [&] {
                 fill( reference_.begin(), reference_.end(), 0 );
                 memcpy( reference_.data(), reference.data(), reference_length_ * sizeof( complex<float> ) );
@@ -141,4 +142,6 @@ void CrossCorrelator::correlate_fast( const Signal & reference, const Signal & d
             output[ offset + lag ] = abs( data_[ lag ] ) / reference_power;
         }
     }
+
+    cerr << "\r                                    \n";
 }
