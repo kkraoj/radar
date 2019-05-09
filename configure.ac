@@ -7,7 +7,7 @@ AM_INIT_AUTOMAKE([foreign])
 AC_CONFIG_HEADERS([config.h])
 
 # Add picky CXXFLAGS
-CXX17_FLAGS="-std=c++17 -pthread"
+CXX17_FLAGS="-std=c++17 -pthread -fopenmp"
 PICKY_CXXFLAGS="-Wpedantic -Wall -Wextra -Weffc++ -Werror"
 AC_SUBST([CXX17_FLAGS])
 AC_SUBST([OPT_CXXFLAGS])

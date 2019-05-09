@@ -2,7 +2,7 @@ AM_CPPFLAGS = $(CXX17_FLAGS) $(fftw3f_CFLAGS)
 AM_CXXFLAGS = $(PICKY_CXXFLAGS)
 
 LDFLAGS = -pthread
-LDADD = -lfftw3f_threads $(fftw3f_LIBS)
+LDADD = -lfftw3f_omp $(fftw3f_LIBS) -lomp
 
 SHARED = helpers.hh cross-correlation.hh cross-correlation.cc
 

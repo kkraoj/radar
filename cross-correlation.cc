@@ -163,6 +163,7 @@ void CrossCorrelator::correlate_fast( const Signal & reference, const Signal & d
         reference_power += norm( reference_fft_[ i ] );
     }
 
+#pragma omp parallel for
     for ( unsigned int thread_id = 0; thread_id < data_.size(); thread_id++ ) {
         for ( unsigned int offset = thread_id * interval; offset < data.size(); offset += data_.size() * interval ) {
             fill( data_[ thread_id ].begin(), data_[ thread_id ].end(), 0 );
