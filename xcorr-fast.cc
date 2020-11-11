@@ -41,7 +41,7 @@ void program_body( const string & reference_filename, const string & data_filena
     const float sample_rate = 15.36 * 1.0e6;
     bool printing = false;
     for ( unsigned int lag = 0; lag < result.size(); lag++ ) {
-        if ( result[ lag ] > 0.001 ) {
+        if ( result[ lag ] > 0.01 ) {
             if ( not printing and lag > 0 ) {
                 output_line( (lag-1) / sample_rate, 0 );
                 printing = true;
